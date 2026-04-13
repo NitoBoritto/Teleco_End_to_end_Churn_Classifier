@@ -166,5 +166,64 @@ def main(args):
         
         # Tracking predictions inference time
         t1 = time.time()
-        y_proba = ml_pipeline.predict_proba(X_test)[:, 1]
+        y_proba = ml_pipeline.predict_proba(X_test)[:, 1] # Focusing on churners
         
+        # Applying classification threshold
+        y_pred = (y_proba >= args.threshold).astype(int)
+        pred_time = time.time() - t1
+        mlflow.log_metric('pred_time', pred_time) # Tracking prediction performance
+        
+        # Logging metrics
+        prec = precision_score(y_test, y_pred)
+        rec = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+        roc_auc = roc_auc_score(y_test, y_proba)
+        
+        # Log all metrics for expirement tracking
+        mlflow.log_metric('precision', prec)
+        mlflow.log_metric('recall', rec)
+        mlflow.log_metric('f1', f1)
+        mlflow.log_metric('roc_auc', roc_auc)
+        
+        print("Model Performance:")
+        print(f"Precision: {prec:.2f} | Recall: {rec:.2f}")
+        print(f"F1 Score: {f1:.2f}    | ROC AUC: {roc_auc:.2f}")
+        
+        # 7️⃣ Model serializaation and logging
+        print('Saving model to MLflow...')
+        mlflow.sklearn.log_model(   # Log model in MLflow's standard format for serving
+            ml_pipeline,
+            artifact_path = 'model' # This creates a 'model/' folder in MLflow run artifacts
+        )
+        # 8️⃣ Final Performance Summary
+        print('\nPerformance Summary:')
+        print(f'Training time: {train_time:.2f}s')
+        print(f'Inference time: {pred_time:.2f}s')
+        print(f'Samples per second: {len(X_test)/pred_time:.0f}')
+        print('-----------------------------------------------')
+        print('Detailed Classification Report:')
+        print(classification_report(y_test, y_pred, digits=3))
+        
+    if __name__ == '__main__':
+        p = argparse.ArgumentParser(description = 'Run churn pipeline with LogisticRegression & MLflow')
+        p.add_argument('--input', type = str, required = True,
+                       default = r'data\raw\WA_Fn-UseC_-Telco-Customer-Churn.csv',
+                       help = 'path to CSV (e.g., data/raw/Telco-Customer-Churn.csv)')
+        p.add_argument('--target', type = str, default = 'Churn')
+        p.add_argument('--threshold', type = float, default = 0.35)
+        p.add_argument('--test_size', type = float, default = 0.2)
+        p.add_argument('--experiment', type = str, default = 'Telco Churn')
+        p.add_argument('--mlflow_uri', type = str, default = None,
+                       help = 'override Mlflow tracking URI, else uses project_root/mlruns')
+        
+        args = p.parse_args()
+        main(args)
+        
+"""
+# Use this below to run the pipeline:
+
+python scripts/run_pipeline.py \                                            
+    --input data/raw/Telco-Customer-Churn.csv \
+    --target Churn
+
+"""
