@@ -24,7 +24,25 @@ class custom_binary_encoder(BaseEstimator, TransformerMixin):
         for col in self.binary_cols:
             X[col] = X[col].map(self.mapping).fillna(0).astype(int)
         return X
-
+    
+class boolean_encoder(BaseEstimator,  TransformerMixin):
+    """
+    Custom boolean encoder
+    
+    Transforms boolean features to binary 1/0 integers for consistence and
+    overall model performance
+    """
+    def __init__(self, bool_cols):
+        self.bool_cols = bool_cols
+    
+    def fit (self, X, y = None):
+        return self
+    
+    def transform(self, X):
+        X = X.copy()
+        X[self.bool_cols] = X[self.bool_cols].astype(int)
+        
+        return X
 class aggregate_drop_multicollinear(BaseEstimator, TransformerMixin):
     """
     Handle multicollinearity by:
@@ -54,7 +72,7 @@ class aggregate_drop_multicollinear(BaseEstimator, TransformerMixin):
         X = X.copy()
 
         # Aggregate `No_internet_service` columns
-        no_internet_present = [col for col in self.no_internet_cols if col in X.columns]
+        no_internet_present = [col for col in X.columns if any(base in col for base in self.no_internet_cols)]
         if no_internet_present:
             X['No_internet_service'] = X[no_internet_present].any(axis = 1).astype(int)
             X = X.drop(columns = no_internet_present)
@@ -86,6 +104,8 @@ def build_features(df: pd.DataFrame, target_col: str = 'Churn') -> pd.DataFrame:
     obj_cols = [c for c in df.select_dtypes(include = 'object').columns if c != target_col]    
     # If binary col then we use the custom encoder   
     binary_cols = [c for c in obj_cols if df[c].dropna().nunique() == 2]
+    # If True/False columns we transform them into binary
+    bool_cols = [c for c in df.select_dtypes(include = 'bool').columns if c != target_col]
     # if 3 or more we ohe
     multi_cols = [c for c in obj_cols if df[c].dropna().nunique() > 2]
     # we scale all other numerical using RobustScaler
@@ -94,6 +114,7 @@ def build_features(df: pd.DataFrame, target_col: str = 'Churn') -> pd.DataFrame:
     # Preprocessor 
     preprocessor = ColumnTransformer(transformers = [
         ('bin', custom_binary_encoder(binary_cols), binary_cols),
+        ('bool', boolean_encoder(bool_cols), bool_cols),
         ('ohe', OneHotEncoder(drop = 'first'), multi_cols),
         ('scaler', RobustScaler(), numeric_cols)
     ], remainder = 'passthrough')
