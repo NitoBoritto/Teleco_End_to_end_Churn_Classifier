@@ -61,15 +61,21 @@ def train_model(df: pd.DataFrame, target_col: str = 'Churn', model_artifact_path
     with mlflow.start_run():
         # Train model
         ml_pipeline.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
+        
+        # Predictions
+        y_pred = ml_pipeline.predict(X_test)
+        
+        # Calculate metrics
         f1 = f1_score(y_test, y_pred)
         rec = recall_score(y_test, y_pred)
         
         # Log params, metrics and model
-        mlflow.log_param('C', .4)
+        mlflow.log_param(model.get_params())
         mlflow.log_metric('F1', f1)
         mlflow.log_metric('Recall',rec)
-        mlflow.sklearn.log_model(ml_pipeline.named_steps('lgr'), 'model')
+        
+        # Log model pipeline
+        mlflow.sklearn.log_model(ml_pipeline, 'model_pipeline')
         
         # Log dataset so it shows in MLflow UI
         train_ds = mlflow.data.from_pandas(df, source = 'training_data')
