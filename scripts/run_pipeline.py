@@ -12,12 +12,12 @@ import argparse
 import pandas as pd
 import mlflow.sklearn
 from posthog import project_root
-from sklearn.model_selection import train_test_split, StratifiedKFold
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     classification_report, precision_score, recall_score,
     f1_score, roc_auc_score
 )
-from sklearn.linear_model import LogisticRegressionCV
+from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
 # Fix import path for local modules
@@ -28,7 +28,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.data.load_data import load_data                   # Data loading with error handling
 from src.data.preprocess import preprocess_data            # Basic data cleaning
 from src.features.build_features import build_features     # Feature engineering
-from src.utils.validate_data import validate_data   # Data quality validation
+from src.utils.validate_data import validate_data          # Data quality validation
+from src.models.tune import tune_model                     # Hyper parameter tuning
 
 def main(args):
     """
@@ -48,9 +49,11 @@ def main(args):
     with mlflow.start_run():
         # Log hyperparameters and config
         # Required for model reproducibility
-        mlflow.log_para('model', 'lgr')  # Model type for comparison
-        mlflow.log_para('threshold', args.threshold)    # Classification threshold
-        mlflow.log_para('test_size', args.test_size)    # Train/test split ratio
+        mlflow.log_param('model', 'lgr')  # Model type for comparison
+        mlflow.log_param('threshold', args.threshold)    # Classification threshold
+        mlflow.log_param('test_size', args.test_size)    # Train/test split ratio
+        
+        
         
         # 1️⃣ Data loading & validation
         print('Loading data...')
@@ -85,6 +88,7 @@ def main(args):
         
         
         
+        
         # 3️⃣ Splitting
         print('Splitting data...')
         # Checking target validity
@@ -105,25 +109,32 @@ def main(args):
         print(f"✅ Train: {X_train.shape[0]} samples | Test: {X_test.shape[0]} samples")
         
         
+        
+        
         # 4️⃣ Feature engineering
         print('Building features...')
         # Apply feature engineering transformations
-        feature_engineer = build_features(X_train) # BE, Bool encoding, OHE, and dropping correlated features using module
+        feature_engineer = build_features(X_train)
+        # BE, Bool encoding, OHE, and dropping correlated features using module
+        
+        
         
          
         # 5️⃣ Model training with optimized hyperparameters
         print('Training model pipeline...')
-        # Setting up cross validation
-        skf = StratifiedKFold(n_splits = 5, 
-                            shuffle = True,
-                            random_state = 30)
+        best_params = tune_model(X_train, y_train)
+        
+        # Log the best params to MLflow so you can see them in the UI
+        mlflow.log_params(best_params)
+        
+        print('Building final model with best parameters...')
         
         # Building the model
-        model = LogisticRegressionCV(C = .4,
+        model = LogisticRegression(**best_params,
                                     class_weight = 'balanced',
                                     random_state = 30,
-                                    cv = skf,
-                                    n_jobs = -1)
+                                    n_jobs = -1,
+                                    max_iter = 1000)
         
         # Adding the model to the pipeline
         ml_pipeline = Pipeline([
@@ -161,6 +172,9 @@ def main(args):
         mlflow.log_artifact(os.path.join(artifacts_dir, 'preprocessing.pkl'))
         print(f'✅ Saved {len(feature_cols)} feature columns for serving consistency')
         
+        
+        
+        
         # 6️⃣ Model evaluation
         print('Evaluating model performance')
         
@@ -189,12 +203,19 @@ def main(args):
         print(f"Precision: {prec:.2f} | Recall: {rec:.2f}")
         print(f"F1 Score: {f1:.2f}    | ROC AUC: {roc_auc:.2f}")
         
+        
+        
+        
         # 7️⃣ Model serializaation and logging
         print('Saving model to MLflow...')
         mlflow.sklearn.log_model(   # Log model in MLflow's standard format for serving
             ml_pipeline,
             artifact_path = 'model' # This creates a 'model/' folder in MLflow run artifacts
         )
+        
+        
+        
+        
         # 8️⃣ Final Performance Summary
         print('\nPerformance Summary:')
         print(f'Training time: {train_time:.2f}s')
@@ -203,6 +224,9 @@ def main(args):
         print('-----------------------------------------------')
         print('Detailed Classification Report:')
         print(classification_report(y_test, y_pred, digits=3))
+        
+        
+        
         
     if __name__ == '__main__':
         p = argparse.ArgumentParser(description = 'Run churn pipeline with LogisticRegression & MLflow')

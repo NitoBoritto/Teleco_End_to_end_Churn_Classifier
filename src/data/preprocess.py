@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-def preprocess_data(df: pd.Dataframe, target_col: str = 'Churn') -> pd.DataFrame:
+def preprocess_data(df: pd.DataFrame, target_col: str = 'Churn') -> pd.DataFrame:
     """
     All cleaning steps made
     - trim columns names
@@ -20,11 +20,11 @@ def preprocess_data(df: pd.Dataframe, target_col: str = 'Churn') -> pd.DataFrame
     # Binary encoding target variable        
     if target_col in df.columns and df[target_col].dtype == 'object':
         df[target_col] = df[target_col].str.strip()
-        df[target_col] = np.where(target_col == 'Yes', 1, 0).astype(int)
+        df[target_col] = df[target_col].map({'Yes': 1, 'No': 0}).fillna(0).astype(int)
     
     # TotalCharges to numeric    
     if 'TotalCharges' in df.columns:
-        df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], erroes = 'coerce')
+        df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors = 'coerce')
     
     # Fixing SeniorCitizen feature
     if 'SeniorCitizen' in df.columns:

@@ -1,11 +1,15 @@
 import optuna
+import os
+import sys
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.pipeline import Pipeline
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 # Custom transformers and pipeline
 from src.data.preprocess import preprocess_data
-from src.features import build_features
+from src.features.build_features import build_features
 from src.utils import validate_data
 
 def tune_model(X, y):
@@ -13,14 +17,15 @@ def tune_model(X, y):
     Hyperparameter tuning using Optuna
     
     """
-    # Feature engineering
-    feature_engineer = build_features(X, target_col = y)
     
     # Tuning function
     def objective(trial):
         params = {
             'C': trial.suggest_float('C', .001, 1, log = True)
         }
+        
+        # Feature engineering
+        feature_engineer = build_features(X)
         
         # Setting up cross validation
         skf = StratifiedKFold(n_splits = 5, 
@@ -40,11 +45,16 @@ def tune_model(X, y):
         ])
         
         # Evaluting the model
-        scores = cross_val_score(ml_pipeline, X, y, cv = skf, scoring = 'recall', n_jobs = -1)
+        scores = cross_val_score(ml_pipeline,
+                                 X, y,
+                                 cv = skf,
+                                 scoring = 'recall',
+                                 n_jobs = -1,
+                                 error_score = 'raise')
         return scores.mean()
     
     study = optuna.create_study(direction = 'maximize')
     study.optimize(objective, n_trials = 20)
     
-    print(f'Best parameters: {study.best_params}')
+    print(f'✅ Optimization complete.\nBest parameters: {study.best_params}')
     return study.best_params

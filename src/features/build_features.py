@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.preprocessing import OneHotEncoder, RobustScaler
 from sklearn.compose import ColumnTransformer
@@ -25,6 +26,9 @@ class custom_binary_encoder(BaseEstimator, TransformerMixin):
             X[col] = X[col].map(self.mapping).fillna(0).astype(int)
         return X
     
+    def get_feature_names_out(self, input_features=None):
+        return self.feature_names_in_
+    
 class boolean_encoder(BaseEstimator,  TransformerMixin):
     """
     Custom boolean encoder
@@ -43,6 +47,10 @@ class boolean_encoder(BaseEstimator,  TransformerMixin):
         X[self.bool_cols] = X[self.bool_cols].astype(int)
         
         return X
+    
+    def get_feature_names_out(self, input_features=None):
+        return self.feature_names_in_
+    
 class aggregate_drop_multicollinear(BaseEstimator, TransformerMixin):
     """
     Handle multicollinearity by:
@@ -70,12 +78,17 @@ class aggregate_drop_multicollinear(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         X = X.copy()
+        
+        X.columns = [str(c) for c in X.columns]
 
         # Aggregate `No_internet_service` columns
-        no_internet_present = [col for col in X.columns if any(base in col for base in self.no_internet_cols)]
-        if no_internet_present:
-            X['No_internet_service'] = X[no_internet_present].any(axis = 1).astype(int)
-            X = X.drop(columns = no_internet_present)
+        no_internet_cols = [
+            col for col in X.columns 
+            if any(keyword in col for keyword in self.no_internet_cols)
+        ]
+        if no_internet_cols:  # ← Same check, just different variable name
+            X['No_internet_service'] = X[no_internet_cols].any(axis=1).astype(int)
+            X = X.drop(columns=no_internet_cols)
             
         # Aggregate `No_phone_service` columns
         if self.no_phone_col in X.columns:
@@ -91,7 +104,7 @@ class aggregate_drop_multicollinear(BaseEstimator, TransformerMixin):
 
 
 
-def build_features(df: pd.DataFrame, target_col: str = 'Churn') -> pd.DataFrame:
+def build_features(df: pd.DataFrame, target_col: str = 'Churn') -> Pipeline:
     '''
     Appylying custom transformers and encoders to data
     
@@ -115,12 +128,14 @@ def build_features(df: pd.DataFrame, target_col: str = 'Churn') -> pd.DataFrame:
     preprocessor = ColumnTransformer(transformers = [
         ('bin', custom_binary_encoder(binary_cols), binary_cols),
         ('bool', boolean_encoder(bool_cols), bool_cols),
-        ('ohe', OneHotEncoder(drop = 'first'), multi_cols),
+        ('ohe', OneHotEncoder(drop = 'first', sparse_output = False), multi_cols),
         ('scaler', RobustScaler(), numeric_cols)
     ], remainder = 'passthrough')
     
     # Multicollinear features identified
     extra_drops = ['InternetService_No', 'PhoneService', 'MonthlyCharges']
+    
+    preprocessor.set_output(transform='pandas')
     
     feature_pipeline = Pipeline([
         ('preprocess', preprocessor),
@@ -128,4 +143,4 @@ def build_features(df: pd.DataFrame, target_col: str = 'Churn') -> pd.DataFrame:
     ])
     
     # Returning the transformers and scalers with it's output set as a df
-    return feature_pipeline.set_output('pandas')
+    return feature_pipeline
