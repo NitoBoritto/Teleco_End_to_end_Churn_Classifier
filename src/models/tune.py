@@ -4,6 +4,7 @@ import sys
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 from sklearn.pipeline import Pipeline
+from sklearn.base import clone
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
@@ -24,24 +25,24 @@ def tune_model(X, y):
             'C': trial.suggest_float('C', .001, 1, log = True)
         }
         
-        # Feature engineering
-        feature_engineer = build_features(X)
-        
         # Setting up cross validation
         skf = StratifiedKFold(n_splits = 5, 
                             shuffle = True,
                             random_state = 30)
         
-        # Building the model
-        model = LogisticRegression(**params,
-                                   class_weight = 'balanced',
-                                   random_state = 30,
-                                   max_iter = 1000)
+        # Get the UNFITTED feature pipeline
+        preprocessor, multicollinear = build_features(X)
         
-        # Adding the model to the pipeline
+        # Create a FLAT pipeline with all transformers + model
         ml_pipeline = Pipeline([
-            ('features', feature_engineer),
-            ('lgr', model)
+            ('preprocessor', preprocessor),
+            ('multicollinear', multicollinear),
+            ('lgr', LogisticRegression(
+                **params,
+                class_weight='balanced',
+                random_state=30,
+                max_iter=1000
+            ))
         ])
         
         # Evaluting the model
@@ -49,7 +50,7 @@ def tune_model(X, y):
                                  X, y,
                                  cv = skf,
                                  scoring = 'recall',
-                                 n_jobs = -1,
+                                 n_jobs = 1,
                                  error_score = 'raise')
         return scores.mean()
     

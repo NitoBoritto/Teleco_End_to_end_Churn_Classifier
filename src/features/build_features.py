@@ -27,7 +27,7 @@ class custom_binary_encoder(BaseEstimator, TransformerMixin):
         return X
     
     def get_feature_names_out(self, input_features=None):
-        return self.feature_names_in_
+        return np.array(self.binary_cols)
     
 class boolean_encoder(BaseEstimator,  TransformerMixin):
     """
@@ -44,12 +44,13 @@ class boolean_encoder(BaseEstimator,  TransformerMixin):
     
     def transform(self, X):
         X = X.copy()
-        X[self.bool_cols] = X[self.bool_cols].astype(int)
+        if len(self.bool_cols) > 0:
+            X[self.bool_cols] = X[self.bool_cols].astype(int)
         
         return X
     
     def get_feature_names_out(self, input_features=None):
-        return self.feature_names_in_
+        return np.array(self.bool_cols)
     
 class aggregate_drop_multicollinear(BaseEstimator, TransformerMixin):
     """
@@ -78,27 +79,27 @@ class aggregate_drop_multicollinear(BaseEstimator, TransformerMixin):
 
     def transform(self, X):
         X = X.copy()
-        
         X.columns = [str(c) for c in X.columns]
 
-        # Aggregate `No_internet_service` columns
+        # Find internet service columns (with any prefix)
         no_internet_cols = [
             col for col in X.columns 
             if any(keyword in col for keyword in self.no_internet_cols)
         ]
-        if no_internet_cols:  # ← Same check, just different variable name
+        if no_internet_cols:
             X['No_internet_service'] = X[no_internet_cols].any(axis=1).astype(int)
             X = X.drop(columns=no_internet_cols)
-            
-        # Aggregate `No_phone_service` columns
-        if self.no_phone_col in X.columns:
-            X['No_phone_service'] = X[self.no_phone_col].astype(int)
-            X = X.drop(columns = self.no_phone_col)
-            
-        # Drop other multicollinear features
-        cols_to_drop = [col for col in self.extra_drop_cols if col in X.columns]
+        
+        # Find phone service columns
+        no_phone_cols = [col for col in X.columns if 'MultipleLines_No phone service' in col]
+        if no_phone_cols:
+            X['No_phone_service'] = X[no_phone_cols].any(axis=1).astype(int)
+            X = X.drop(columns=no_phone_cols)
+        
+        # Drop multicollinear with substring matching
+        cols_to_drop = [col for col in X.columns if any(drop in col for drop in self.extra_drop_cols)]
         if cols_to_drop:
-            X = X.drop(columns = cols_to_drop)
+            X = X.drop(columns=cols_to_drop)
             
         return X
 
@@ -137,10 +138,7 @@ def build_features(df: pd.DataFrame, target_col: str = 'Churn') -> Pipeline:
     
     preprocessor.set_output(transform='pandas')
     
-    feature_pipeline = Pipeline([
-        ('preprocess', preprocessor),
-        ('multicollinear', aggregate_drop_multicollinear(extra_drop_cols = extra_drops))
-    ])
+    multicollinear_transformer = aggregate_drop_multicollinear(extra_drop_cols=extra_drops)
     
     # Returning the transformers and scalers with it's output set as a df
-    return feature_pipeline
+    return preprocessor, multicollinear_transformer

@@ -2,3 +2,15 @@ churn_classifier
 .env
 venv
 *.csv
+mlruns
+great_expectations
+app
+artifacts
+configs
+data
+docker
+tests
+setup_gx.py
+__pycache__/
+*.py[cod]
+*$py.class

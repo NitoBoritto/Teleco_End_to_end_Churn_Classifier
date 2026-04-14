@@ -18,3 +18,5 @@ pytest
 statsmodels
 optuna
 posthog
+black
+jinja2

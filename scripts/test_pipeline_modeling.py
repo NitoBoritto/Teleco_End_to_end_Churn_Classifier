@@ -46,18 +46,20 @@ def main():
 
     # 3️⃣ Build Final Pipeline
     # We define the feature engineer specifically for the training set
-    feature_engineer = build_features(X_train)
+    preprocessor, multicollinear = build_features(X_train)
 
-    # Use standard LogisticRegression with the best params
+    # LogisticRegression with the best params
     model = LogisticRegression(
         **best_params, 
         class_weight='balanced', 
         random_state=42, 
         max_iter=1000
     )
+    
 
     ml_pipeline = Pipeline([
-        ('features', feature_engineer),
+        ('preprocessor', preprocessor),
+        ('multicollinear', multicollinear),
         ('lgr', model)
     ])
 

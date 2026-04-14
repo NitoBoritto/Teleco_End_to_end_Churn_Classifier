@@ -8,10 +8,10 @@ import sys
 import time
 import json
 import joblib
+from pathlib import Path
 import argparse
 import pandas as pd
 import mlflow.sklearn
-from posthog import project_root
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     classification_report, precision_score, recall_score,
@@ -39,10 +39,12 @@ def main(args):
     
     # MLflow setup for expirement tracking
     # Configuring MLflow to use local file-based tracking instead of a tracking server
-    project_root = sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-    mlruns_path = args.mlflow_uri or f'file://{project_root}/mlruns' # Local file-based tracking
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    sys.path.append(str(project_root))
+    
+    mlruns_path = args.mlflow_uri or f'file:///{project_root}/mlruns'.replace('\\', '/') # Local file-based tracking
     mlflow.set_tracking_uri(mlruns_path)
-    mlflow.set_expreiment(args.expirement) # Creates experiment if it doesn't exist
+    mlflow.set_experiment(args.experiment) # Creates experiment if it doesn't exist
     
     # Start Mlflow run
     # All subsequent logging will be tracking under this run
@@ -60,6 +62,9 @@ def main(args):
         df = load_data(args.input) # Loading data using module
         print(f'✅ Data loaded successfully {df.shape[0]} rows, {df.shape[1]} columns')
         
+        # Transforming TotalCharges to numeric incase of validation hiccups
+        df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce').fillna(0)
+        
         # Validating data using module
         print('Validating data using Great Expectations...')
         is_valid, failed = validate_data(df)
@@ -67,7 +72,7 @@ def main(args):
         
         # log validation failures for debugging
         if not is_valid:
-            mlflow.log_test(json.dumps(failed, indent = 2), artifact_file = 'failed_expectations.json')
+            mlflow.log_text(json.dumps(failed, indent = 2), artifact_file = 'failed_expectations.json')
             raise ValueError(f'❌ Data quality check failed. Issues: {failed}')
         else :
             print('✅ Validation passed, logging to MLflow')
@@ -114,7 +119,7 @@ def main(args):
         # 4️⃣ Feature engineering
         print('Building features...')
         # Apply feature engineering transformations
-        feature_engineer = build_features(X_train)
+        preprocessor, multicollinear = build_features(X_train)
         # BE, Bool encoding, OHE, and dropping correlated features using module
         
         
@@ -138,7 +143,8 @@ def main(args):
         
         # Adding the model to the pipeline
         ml_pipeline = Pipeline([
-            ('features', feature_engineer),
+            ('preprocessor', preprocessor),
+            ('multicollinear', multicollinear),
             ('lgr', model)
         ])
         
@@ -154,7 +160,7 @@ def main(args):
         os.makedirs(artifacts_dir, exist_ok = True)
         
         # Get feature columns
-        feature_cols = ml_pipeline.named_steps['features'].get_feature_names_out().tolist()
+        feature_cols = ml_pipeline.named_steps['preprocessor'].get_feature_names_out().tolist()
         
         # Save locally for development serving
         with open(os.path.join(artifacts_dir, 'feature_columns.json'), 'w') as f:
@@ -228,26 +234,24 @@ def main(args):
         
         
         
-    if __name__ == '__main__':
-        p = argparse.ArgumentParser(description = 'Run churn pipeline with LogisticRegression & MLflow')
-        p.add_argument('--input', type = str, required = True,
-                       default = r'data\raw\WA_Fn-UseC_-Telco-Customer-Churn.csv',
-                       help = 'path to CSV (e.g., data/raw/Telco-Customer-Churn.csv)')
-        p.add_argument('--target', type = str, default = 'Churn')
-        p.add_argument('--threshold', type = float, default = 0.35)
-        p.add_argument('--test_size', type = float, default = 0.2)
-        p.add_argument('--experiment', type = str, default = 'Telco Churn')
-        p.add_argument('--mlflow_uri', type = str, default = None,
-                       help = 'override Mlflow tracking URI, else uses project_root/mlruns')
+if __name__ == '__main__':
+    p = argparse.ArgumentParser(description = 'Run churn pipeline with LogisticRegression & MLflow')
+    p.add_argument('--input', type = str, required = True,
+                   default = r'data\raw\WA_Fn-UseC_-Telco-Customer-Churn.csv',
+                   help = 'path to CSV (e.g., data/raw/Telco-Customer-Churn.csv)')
+    p.add_argument('--target', type = str, default = 'Churn')
+    p.add_argument('--threshold', type = float, default = 0.35)
+    p.add_argument('--test_size', type = float, default = 0.2)
+    p.add_argument('--experiment', type = str, default = 'Telco Churn')
+    p.add_argument('--mlflow_uri', type = str, default = None,
+                   help = 'override Mlflow tracking URI, else uses project_root/mlruns')
         
-        args = p.parse_args()
-        main(args)
+    args = p.parse_args()
+    main(args)
         
 """
 # Use this below to run the pipeline:
 
-python scripts/run_pipeline.py \                                            
-    --input data/raw/Telco-Customer-Churn.csv \
-    --target Churn
+python scripts/run_pipeline.py --input data/raw/WA_Fn-UseC_-Telco-Customer-Churn.csv --target Churn
 
 """
