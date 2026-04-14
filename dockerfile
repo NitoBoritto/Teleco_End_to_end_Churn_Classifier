@@ -4,22 +4,23 @@ FROM python:3.11-slim
 # Setting working directory inside the container
 WORKDIR /app
 
+# Install system dependencies first
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Copy dependencies first for better layer caching
 COPY requirements.txt .
-
-# Install python dependencies & clean up to keep image lean
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt \
-    && apt-get update && apt-get install -y --no-install-recommends \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
+    && pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire project
 COPY . .
 
-# Explicitly ensure the model is where inference.py expects it (/app/model)
+# Explicitly ensure the model is where inference.py expects it
 COPY src/serving/model /app/model
 
-# Set environment variables (No spaces!)
+# Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 

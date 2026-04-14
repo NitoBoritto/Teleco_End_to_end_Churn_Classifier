@@ -27,4 +27,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: NitoBoritto/telco-churn-classifier:latest
+          tags: nitoboritto/telco-churn-classifier:latest
