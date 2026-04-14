@@ -18,20 +18,22 @@ import pandas as pd
 import mlflow
 import glob
 import joblib
-
+from src.data.preprocess import preprocess_data
 # Model loading configuration
 # IMPORTANT: This path is set during Docker container build
 # In development: uses local MLflow artifacts
 # In production: uses model copied to container at build time
 
 model_dir = '/app/model'
+artifacts_dir = './artifacts'
 
+# Load the trained model in Mflow pyfunc format
 try:
-    # Load the trained model in Mflow pyfunc format
+    
     model = mlflow.pyfunc.load_model(model_dir)
-    print('f✅ Model loaded successfully from {model_dr}')
+    print(f'✅ Model loaded successfully from {model_dir}')
 except Exception as e:
-    print(f'❌ Failed to load mdel from {model_dir}: {e}')
+    print(f'❌ Failed to load model from {model_dir}: {e}')
     # If this happens fallback for local development
     try:
         # Loading from local Mlflow tracking
@@ -46,24 +48,13 @@ except Exception as e:
     except Exception as fallback_error:
         raise Exception(f'Failed to load model: {e}. Fallback failed: {fallback_error}')
 
+# Load transformer pipeline
 try:
-    feature_file = os.path.join(model_dir, 'feature_columns.txt')
-    with open(feature_file) as f:
-        feature_cols = [ln.strip() for ln in f if ln.strip()]
-    print(f'✅ Loaded {len(feature_cols)} feature columns from training')
+    transformers = joblib.load(os.path.join(artifacts_dir, 'transformers.pkl'))
+    print('✅ Fitted transformers loaded successfully')
 except Exception as e:
-    raise Exception(f'Failed to load feature columns: {e}')
+    raise Exception(f'Failed to load transformers: {e}')
 
-# Feature transformation constraints
-binary_map = {
-    'bin_gender': {'Female': 0, 'Male': 1},
-    'bin_Partner': {'No': 0, 'Yes': 1},
-    'bin_Dependents': {'No': 0, 'Yes': 1},
-    'bin_PhoneService': {'No': 0, 'Yes': 1},
-    'bin_PaperlessBilling': {'No': 0, "Yes": 1}
-}
-
-numeric_cols = ["tenure", "MonthlyCharges", "TotalCharges"]
 
 def service_transform(df : pd.DataFrame) -> pd.DataFrame:
     """
@@ -73,5 +64,24 @@ def service_transform(df : pd.DataFrame) -> pd.DataFrame:
     transformed exactly as they were during training to prevent train/serve skew.
     
     """
-    df = df.copy()
-    df.columns = df.columns.str.strip()
+    
+    # Clean raw data
+    df_cleaned = preprocess_data(df)
+    
+    df_transformed = transformers.transform(df_cleaned)
+    
+    return df_transformed
+
+
+def predict(input_dict: dict) -> str:
+    """
+    Where the predictions happen
+    
+    """
+    df = pd.DataFrame([input_dict])
+    
+    df_final = service_transform(df)
+    
+    prediction = model.predict(df_final)
+    
+    return 'Likely to churn' if prediction[0] == 1 else 'Not likely to churn'

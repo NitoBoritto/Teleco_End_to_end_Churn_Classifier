@@ -147,6 +147,7 @@ def main(args):
             ('multicollinear', multicollinear),
             ('lgr', model)
         ])
+
         
         # Train modela dn track performance
         t0 = time.time()
@@ -159,8 +160,13 @@ def main(args):
         artifacts_dir = os.path.join(project_root, 'artifacts')
         os.makedirs(artifacts_dir, exist_ok = True)
         
+        fitted_transformers = Pipeline([
+            ('preprocessor', ml_pipeline.named_steps['preprocessor']),
+            ('multicollinear', ml_pipeline.named_steps['multicollinear'])
+        ])
+        
         # Get feature columns
-        feature_cols = ml_pipeline.named_steps['preprocessor'].get_feature_names_out().tolist()
+        feature_cols = fitted_transformers.get_feature_names_out().tolist()
         
         # Save locally for development serving
         with open(os.path.join(artifacts_dir, 'feature_columns.json'), 'w') as f:
@@ -176,6 +182,8 @@ def main(args):
         }
         joblib.dump(preprocessing_artifact, os.path.join(artifacts_dir, 'preprocessing.pkl'))
         mlflow.log_artifact(os.path.join(artifacts_dir, 'preprocessing.pkl'))
+        joblib.dump(fitted_transformers, os.path.join(artifacts_dir, 'transformers.pkl'))
+        mlflow.log_artifact(os.path.join(artifacts_dir, 'transformers.pkl'))
         print(f'✅ Saved {len(feature_cols)} feature columns for serving consistency')
         
         
@@ -229,7 +237,7 @@ def main(args):
         print(f'Samples per second: {len(X_test)/pred_time:.0f}')
         print('-----------------------------------------------')
         print('Detailed Classification Report:')
-        print(classification_report(y_test, y_pred, digits=3))
+        print(classification_report(y_test, y_pred, digits = 2))
         
         
         

@@ -102,6 +102,39 @@ class aggregate_drop_multicollinear(BaseEstimator, TransformerMixin):
             X = X.drop(columns=cols_to_drop)
             
         return X
+    
+    def get_feature_names_out(self, input_features=None):
+            """
+            Calculates the feature names after aggregation and dropping.
+            """
+            if input_features is None:
+                return np.array([])
+                
+            current_cols = list(input_features)
+
+            # 1. Identify which columns will be removed (accounting for prefixes)
+            to_remove = []
+            for col in current_cols:
+                # Match internet service columns
+                if any(keyword in col for keyword in self.no_internet_cols):
+                    to_remove.append(col)
+                # Match phone service columns
+                elif 'MultipleLines_No phone service' in col:
+                    to_remove.append(col)
+                # Match extra drops
+                elif any(drop in col for drop in self.extra_drop_cols):
+                    to_remove.append(col)
+
+            # 2. Build the final list
+            # Filter out the 'to_remove' list
+            final_cols = [c for c in current_cols if c not in to_remove]
+            
+            # 3. Add the new feature names we created
+            # We don't add prefixes here because this step isn't a ColumnTransformer
+            final_cols.append('No_internet_service')
+            final_cols.append('No_phone_service')
+
+            return np.array(final_cols)
 
 
 
