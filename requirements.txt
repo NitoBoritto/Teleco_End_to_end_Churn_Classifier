@@ -13,7 +13,7 @@ mlflow
 uvicorn
 pydantic
 python-dotenv
-great-expecations
+great-expectations
 pytest
 statsmodels
 optuna
