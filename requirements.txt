@@ -20,3 +20,4 @@ optuna
 posthog
 black
 jinja2
+streamlit

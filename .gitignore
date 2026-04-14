@@ -4,10 +4,9 @@ venv
 *.csv
 mlruns
 great_expectations
-app
 artifacts
 configs
-data
+/data
 docker
 tests
 setup_gx.py
