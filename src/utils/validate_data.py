@@ -1,5 +1,4 @@
 import great_expectations as gx
-from great_expectations.core.batch import RuntimeBatchRequest
 from typing import Tuple, List
 
 def validate_data(df) -> Tuple[bool, list[str]]:

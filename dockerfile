@@ -1,0 +1,30 @@
+# Using a python docker hardened image
+FROM python:3.11-slim
+
+# Setting working directory inside the container
+WORKDIR /app
+
+# Copy dependencies first for better layer caching
+COPY requirements.txt .
+
+# Install python dependencies & clean up to keep image lean
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy the entire project
+COPY . .
+
+# Explicitly ensure the model is where inference.py expects it (/app/model)
+COPY src/serving/model /app/model
+
+# Set environment variables (No spaces!)
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Expose FastAPI port
+EXPOSE 8000
+
+# Run FastAPI app (pointing to your main.py where 'app = FastAPI()' is)
+CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

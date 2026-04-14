@@ -13,7 +13,6 @@ Architecture:
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-import streamlit as st
 from src.serving.inference import predict
 
 app = FastAPI(

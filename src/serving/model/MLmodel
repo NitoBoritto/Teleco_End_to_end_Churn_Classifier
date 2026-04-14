@@ -1,0 +1,23 @@
+artifact_path: file:///C:/Users/medo7/OneDrive/Desktop/ML Projects/ETE_Churn_Classifier/mlruns/435966056587756332/models/m-3799912f436a4e2191fbe4f90a66810a/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.11.0
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.8.0
+    skops_trusted_types: null
+mlflow_version: 3.11.1
+model_id: m-3799912f436a4e2191fbe4f90a66810a
+model_size_bytes: 4979
+model_uuid: m-3799912f436a4e2191fbe4f90a66810a
+prompts: null
+run_id: 9020f5076ff14ec28ede63da142d64fb
+utc_time_created: '2026-04-14 17:26:00.375524'
