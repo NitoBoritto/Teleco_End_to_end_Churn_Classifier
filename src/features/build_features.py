@@ -169,9 +169,9 @@ def build_features(df: pd.DataFrame, target_col: str = 'Churn') -> Pipeline:
     # Multicollinear features identified
     extra_drops = ['InternetService_No', 'PhoneService', 'MonthlyCharges']
     
-    preprocessor.set_output(transform='pandas')
+    preprocessor.set_output(transform = 'pandas')
     
-    multicollinear_transformer = aggregate_drop_multicollinear(extra_drop_cols=extra_drops)
+    multicollinear_transformer = aggregate_drop_multicollinear(extra_drop_cols = extra_drops)
     
     # Returning the transformers and scalers with it's output set as a df
     return preprocessor, multicollinear_transformer

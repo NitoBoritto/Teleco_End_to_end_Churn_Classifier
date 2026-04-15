@@ -7,7 +7,6 @@ with both programmatic API access and a user-friendly web interface.
 
 Architecture:
 - FastAPI: High-performance REST API with automatic OpenAPI documentation
-- Streamlit: User-friendly web UI for manual testing and demonstrations
 - Pydantic: Data validation and automatic API documentation
 """
 
@@ -16,7 +15,7 @@ from pydantic import BaseModel
 from src.serving.inference import predict
 
 app = FastAPI(
-    tite = 'Teleco Customer Churn Prediction API',
+    title = 'Teleco Customer Churn Prediction API',
     description = 'ML API for predicting customer churn in telecom industry',
     version = '1.0.0'
 )
@@ -43,6 +42,7 @@ class customerdata(BaseModel):
     """
     # Demographics
     gender: str                # "Male" or "Female"
+    SeniorCitizen: int         # Binary "1" or "0" - is Senior
     Partner: str               # "Yes" or "No" - has partner
     Dependents: str            # "Yes" or "No" - has dependents
     
@@ -85,9 +85,16 @@ def get_prediction(data: customerdata):
     - {"error": "error_message"} if prediction fails
     """
     try:
+        
+        input_dict = data.model_dump()
         # Converting Pydantic model to dict and call inference pipeline
-        result = predict(data.model_dump())
-        return {'prediction': result}
+        result = predict(input_dict)
+        return result
     except Exception as e:
+        # Tracing errors
+        import traceback
+        print('--- Backend Traceback ---')
+        traceback.print_exc()
+        print('-------------------------')
         # Return error details for debugging (consider logging in production)
         return {"error": str(e)}

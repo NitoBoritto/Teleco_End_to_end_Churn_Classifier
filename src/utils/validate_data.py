@@ -45,6 +45,8 @@ def validate_data(df) -> Tuple[bool, list[str]]:
     validator.expect_column_to_exist("gender")
     validator.expect_column_to_exist("Partner")
     validator.expect_column_to_exist("Dependents")
+    validator.expect_column_to_exist("SeniorCitizen")
+    validator.expect_column_values_to_not_be_null("SeniorCitizen")
     
     # Service features
     validator.expect_column_to_exist("PhoneService")
@@ -66,6 +68,9 @@ def validate_data(df) -> Tuple[bool, list[str]]:
     validator.expect_column_values_to_be_in_set("Partner", ["Yes", "No"])
     validator.expect_column_values_to_be_in_set("Dependents", ["Yes", "No"])
     validator.expect_column_values_to_be_in_set("PhoneService", ["Yes", "No"])
+    
+    # Binary 1/0 fields data integrity
+    validator.expect_column_values_to_be_in_set("SeniorCitizen", [0, 1])
     
     # Contract types must be valid
     validator.expect_column_values_to_be_in_set(

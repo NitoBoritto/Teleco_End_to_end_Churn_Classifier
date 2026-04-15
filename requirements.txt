@@ -21,3 +21,4 @@ posthog
 black
 jinja2
 streamlit
+psutil
