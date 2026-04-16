@@ -64,7 +64,9 @@ Teleco_End_to_end_Churn_Classifier/
 ├── notebooks/              # EDA, model selection, and experimentation
 │
 ├── scripts/
-│   └── run_pipeline.py     # Orchestrator: end-to-end training pipeline
+|   ├── test_pipeline_modeling.py         # Testing modeling modules of the pipeline
+|   ├── test_pipeline_data_features.py    # Testing preprocessing modules of the pipeline
+│   └── run_pipeline.py                   # Orchestrator: end-to-end training pipeline
 │
 ├── src/
 │   ├── app/
@@ -79,6 +81,8 @@ Teleco_End_to_end_Churn_Classifier/
 │   │   └── build_features.py   # Custom sklearn transformers + ColumnTransformer pipeline
 │   │
 │   ├── models/
+|   |   ├── evaluate.py         # Evalutating metrics (f1, precision, recall, etc.)
+|   |   ├── train.py            # Training module and fitting
 │   │   └── tune.py             # Optuna hyperparameter optimization (recall-optimized)
 │   │
 │   ├── serving/
@@ -362,6 +366,12 @@ The application is containerized and deployed to Azure via GitHub Actions CI/CD.
 ## Dataset
 
 [IBM Telco Customer Churn Dataset](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) — 7,043 customers, 21 features, binary churn target.
+
+---
+
+## UI
+
+[Streamlit UI Implementation](https://nitotelcochurn-e6ebaqgcauancucz.uaenorth-01.azurewebsites.net) — If you would like to try for yourself
 
 ---
 
