@@ -22,3 +22,5 @@ black
 jinja2
 streamlit
 psutil
+azureml-mlflow
+azure-ai-ml

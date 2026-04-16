@@ -27,5 +27,11 @@ ENV PYTHONUNBUFFERED=1 \
 # Expose FastAPI port
 EXPOSE 8000
 
+# Force the script to be an executable
+RUN chmod +x start.sh
+
+# Ensure linux line endings
+RUN sed -i 's/\r$//' start.sh
+
 # Run FastAPI app (pointing to your main.py where 'app = FastAPI()' is)
-CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["./start.sh"]
