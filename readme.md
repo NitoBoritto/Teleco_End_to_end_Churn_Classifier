@@ -375,6 +375,12 @@ The application is containerized and deployed to Azure via GitHub Actions CI/CD.
 
 ---
 
+## Kaggle
+
+[Kaggle Notebook](https://www.kaggle.com/code/ahmedemasha/telco-customer-churn-model-analysis) — Includes all testing and potential models
+
+---
+
 ## Author
 
 **NitoBoritto** — Aspiring Full-Stack Data Scientist
